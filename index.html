@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CutPro – নিখুঁত ব্যাকগ্রাউন্ড রিমুভার</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#171a21;--card:#1e222b;--line:#2a3040;--txt:#e8ebf2;--mut:#8b93a7;
+  --acc:#6c8cff;--acc2:#8f6cff;--ok:#34d399;--bad:#f87171;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans Bengali","Kalpurush",sans-serif;font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.logo{font-weight:800;font-size:17px;background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent;margin-right:auto}
+.logo small{display:block;font-weight:500;font-size:11px;color:var(--mut);-webkit-text-fill-color:var(--mut)}
+button,select,input{font:inherit;color:inherit}
+.btn{background:var(--card);border:1px solid var(--line);color:var(--txt);padding:8px 12px;border-radius:9px;cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--acc)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2));border:0;color:#fff;font-weight:700}
+.btn.sm{padding:5px 9px;font-size:12px}
+main{flex:1;display:grid;grid-template-columns:1fr 350px;min-height:0}
+#stageBox{position:relative;min-height:0;display:flex;min-width:0}
+#stage{position:relative;overflow:auto;display:flex;background:#0b0d11;min-height:0;flex:1;min-width:0}
+#wrap{margin:auto;padding:16px;position:relative}
+#view{display:block;touch-action:none;cursor:crosshair;border-radius:4px;box-shadow:0 8px 40px #0008;
+  background-color:#fff;
+  background-image:linear-gradient(45deg,#d9dce3 25%,transparent 25%,transparent 75%,#d9dce3 75%),linear-gradient(45deg,#d9dce3 25%,transparent 25%,transparent 75%,#d9dce3 75%);
+  background-size:20px 20px;background-position:0 0,10px 10px}
+#drop{position:absolute;inset:16px;border:2px dashed var(--line);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--mut);cursor:pointer;transition:.2s;z-index:2;background:#0b0d11}
+#drop.over,#drop:hover{border-color:var(--acc);color:var(--txt)}
+#drop b{font-size:20px;color:var(--txt)}
+#brushCur{position:fixed;pointer-events:none;border:1.5px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #000a;display:none;z-index:50;transform:translate(-50%,-50%)}
+#zoombar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:#000b;backdrop-filter:blur(8px);padding:6px 10px;border-radius:12px;z-index:5;width:max-content}
+aside{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px;margin-bottom:10px}
+.card h3{margin:0 0 9px;font-size:13px;display:flex;align-items:center;gap:6px}
+.card h3 i{font-style:normal;background:var(--acc);color:#fff;border-radius:6px;width:20px;height:20px;display:inline-grid;place-items:center;font-size:11px}
+.row{display:flex;align-items:center;gap:8px;margin:7px 0}
+.row label{flex:1;color:var(--mut);font-size:12.5px}
+.row label b{color:var(--txt);float:right;font-weight:600}
+.rng{margin:7px 0}
+.rng label{display:flex;justify-content:space-between;color:var(--mut);font-size:12.5px}
+.rng label b{color:var(--txt);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--acc)}
+select,input[type=text]{width:100%;background:#12151b;border:1px solid var(--line);border-radius:8px;padding:7px}
+input[type=color]{width:38px;height:30px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px;cursor:pointer}
+.seg{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.seg.c3{grid-template-columns:repeat(3,1fr)}
+.seg button{background:#12151b;border:1px solid var(--line);border-radius:9px;padding:8px 4px;cursor:pointer;font-size:12.5px;color:var(--mut)}
+.seg button.on{border-color:var(--acc);color:#fff;background:#232a45}
+.sw{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.sw i{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);cursor:pointer}
+.hide{display:none!important}
+#busy{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:12px;text-align:center;padding:20px}
+#busy .sp{width:46px;height:46px;border:4px solid #fff3;border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#pbar{width:260px;height:6px;background:#fff2;border-radius:6px;overflow:hidden}
+#pbar div{height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .2s}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(30px);background:#222a;backdrop-filter:blur(8px);border:1px solid var(--line);padding:10px 16px;border-radius:12px;opacity:0;transition:.25s;z-index:120;max-width:90vw;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hint{font-size:11.5px;color:var(--mut);line-height:1.5;margin-top:6px}
+@media(max-width:900px){
+  body{overflow:auto}
+  main{grid-template-columns:1fr;display:flex;flex-direction:column}
+  #stageBox{height:62vh;flex:none}
+  aside{border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✂ CutPro<small>AI + গাইডেড ফিল্টার + ম্যানুয়াল রিফাইন — সবকিছু আপনার ব্রাউজারেই</small></div>
+  <button class="btn" id="open">📂 ছবি খুলুন</button>
+  <button class="btn" id="undo" disabled title="Ctrl+Z">↶ আনডু</button>
+  <button class="btn" id="redo" disabled title="Ctrl+Shift+Z">↷ রিডু</button>
+  <button class="btn" id="cmp" disabled title="ধরে রাখলে আসল ছবি দেখাবে">👁 আসল দেখুন</button>
+  <button class="btn primary" id="dl" disabled>⬇ ডাউনলোড</button>
+  <input type="file" id="file" accept="image/*" class="hide">
+</header>
+
+<main>
+  <section id="stageBox"><div id="stage">
+    <div id="drop">
+      <div style="font-size:46px">🖼️</div>
+      <b>ছবি এখানে ড্রপ করুন</b>
+      <span>অথবা ক্লিক করুন • Ctrl+V দিয়ে পেস্টও করা যায়</span>
+    </div>
+    <div id="wrap"><canvas id="view" width="10" height="10"></canvas></div>
+  </div></section>
+
+  <aside>
+    <div class="card">
+      <h3><i>1</i> AI ব্যাকগ্রাউন্ড রিমুভাল</h3>
+      <div class="row"><label>মডেল</label></div>
+      <select id="model">
+        <option value="isnet_fp16" selected>ভারসাম্য (~৮০MB) — প্রস্তাবিত</option>
+        <option value="isnet">সর্বোচ্চ মান (~১৭০MB)</option>
+        <option value="isnet_quint8">দ্রুত / ছোট (~৪০MB)</option>
+      </select>
+      <div class="row"><label>ওয়ার্কিং সাইজ (বড় = ধীর)</label></div>
+      <select id="maxSize">
+        <option value="1500">১৫০০ px</option>
+        <option value="2048" selected>২০৪৮ px</option>
+        <option value="3000">৩০০০ px</option>
+        <option value="4096">৪০৯৬ px (বেশি RAM লাগবে)</option>
+      </select>
+      <details id="errDet" class="hide" style="margin:6px 0"><summary style="cursor:pointer;color:var(--bad);font-size:12.5px">⚠ এরর ডিটেইল (কপি করে পাঠান)</summary>
+        <pre id="errPre" style="white-space:pre-wrap;word-break:break-all;user-select:text;font-size:11px;background:#12151b;border:1px solid var(--line);border-radius:8px;padding:8px;max-height:200px;overflow:auto;margin:6px 0 0"></pre>
+      </details>
+      <details style="margin:6px 0"><summary style="cursor:pointer;color:var(--mut);font-size:12.5px">⚙ অ্যাডভান্সড: কাস্টম মডেল URL</summary>
+        <input type="text" id="customPath" placeholder="https://…/background-removal-data/1.5.5/dist/" style="margin-top:6px">
+        <div class="hint">ফাঁকা রাখলে অটো (একাধিক CDN পরপর চেষ্টা করবে)।</div>
+      </details>
+      <div class="row"><input type="checkbox" id="autoRun" checked><label for="autoRun" style="color:var(--txt)">ছবি খুললেই অটো AI চালান</label></div>
+      <div class="row"><input type="checkbox" id="autoRefine" checked><label for="autoRefine" style="color:var(--txt)">AI-এর পর অটো এজ রিফাইন</label></div>
+      <button class="btn primary" id="runAI" style="width:100%" disabled>✨ ব্যাকগ্রাউন্ড মুছুন (AI)</button>
+      <button class="btn sm" id="resetMask" style="width:100%;margin-top:6px" disabled>↺ AI রেজাল্টে ফিরে যান</button>
+      <div class="hint">প্রথমবার মডেল ডাউনলোড হবে (এরপর ক্যাশ থেকে চলে)। ইন্টারনেট না থাকলে নিচের ওয়ান্ড/ব্রাশ দিয়ে ম্যানুয়ালি কাজ করা যাবে।</div>
+    </div>
+
+    <div class="card">
+      <h3><i>2</i> ম্যানুয়াল টুলস</h3>
+      <div class="seg" id="tools">
+        <button data-tool="erase" class="on">🧽 ইরেজ ব্রাশ (E)</button>
+        <button data-tool="restore">🖌 রিস্টোর ব্রাশ (R)</button>
+        <button data-tool="wandE">🪄 রঙ দিয়ে মুছুন (W)</button>
+        <button data-tool="wandR">🎯 রঙ দিয়ে ফিরান (Q)</button>
+      </div>
+      <div class="rng"><label>ব্রাশ সাইজ <b id="bSize-v">40</b></label><input type="range" id="bSize" min="4" max="300" value="40"></div>
+      <div class="rng"><label>ব্রাশ হার্ডনেস <b id="bHard-v">70</b></label><input type="range" id="bHard" min="0" max="100" value="70"></div>
+      <div class="rng"><label>ওয়ান্ড টলারেন্স <b id="tol-v">25</b></label><input type="range" id="tol" min="1" max="100" value="25"></div>
+      <div class="row"><input type="checkbox" id="contig" checked><label for="contig" style="color:var(--txt)">শুধু সংলগ্ন এলাকা (contiguous)</label></div>
+      <div class="hint">চুল/ফার/জালির মতো সূক্ষ্ম অংশে নরম ব্রাশ (হার্ডনেস কম) ব্যবহার করুন। [ ও ] কী দিয়ে সাইজ বদলান।</div>
+    </div>
+
+    <div class="card">
+      <h3><i>3</i> এজ রিফাইন (নিখুঁত কিনারা)</h3>
+      <div class="rng"><label>গাইডেড ফিল্টার রেডিয়াস <b id="gRad-v">12</b></label><input type="range" id="gRad" min="1" max="40" value="12"></div>
+      <div class="rng"><label>ডিটেইল লেভেল <b id="gLvl-v">3</b></label><input type="range" id="gLvl" min="1" max="10" value="3"></div>
+      <button class="btn sm" id="applyRefine" style="width:100%" disabled>🔬 আসল ছবির কিনারায় এজ স্ন্যাপ করুন</button>
+      <hr style="border:0;border-top:1px solid var(--line);margin:10px 0">
+      <div class="rng"><label>এজ শিফট (− সংকোচন / + প্রসারণ) <b id="shift-v">0</b></label><input type="range" id="shift" min="-15" max="15" value="0"></div>
+      <div class="rng"><label>এজ স্মুদিং <b id="smooth-v">0</b></label><input type="range" id="smooth" min="0" max="10" value="0"></div>
+      <div class="rng"><label>ফেদার (নরম কিনারা) <b id="feather-v">0</b></label><input type="range" id="feather" min="0" max="15" value="0"></div>
+      <div class="rng"><label>ডিফ্রিঞ্জ (পুরনো ব্যাকগ্রাউন্ডের রঙের আভা কমান) <b id="defr-v">70</b></label><input type="range" id="defr" min="0" max="100" value="70"></div>
+    </div>
+
+    <div class="card">
+      <h3><i>4</i> নতুন ব্যাকগ্রাউন্ড</h3>
+      <div class="seg c3" id="bgs">
+        <button data-bg="transparent" class="on">স্বচ্ছ</button>
+        <button data-bg="color">রঙ</button>
+        <button data-bg="gradient">গ্রেডিয়েন্ট</button>
+        <button data-bg="image">ছবি</button>
+        <button data-bg="blur">ব্লার</button>
+      </div>
+      <div id="bg-color" class="hide">
+        <div class="row"><label>রঙ বাছুন</label><input type="color" id="bgColor" value="#ffffff"></div>
+        <div class="sw" id="swatches"></div>
+      </div>
+      <div id="bg-gradient" class="hide">
+        <div class="row"><label>রঙ ১</label><input type="color" id="g1" value="#6c8cff"><label style="text-align:right">রঙ ২</label><input type="color" id="g2" value="#c084fc"></div>
+        <div class="rng"><label>অ্যাঙ্গেল <b id="gAngle-v">135</b></label><input type="range" id="gAngle" min="0" max="360" value="135"></div>
+      </div>
+      <div id="bg-image" class="hide">
+        <button class="btn sm" id="pickBg" style="width:100%">🖼 ব্যাকগ্রাউন্ড ছবি বেছে নিন</button>
+        <input type="file" id="bgFile" accept="image/*" class="hide">
+      </div>
+      <div id="bg-blur" class="hide">
+        <div class="rng"><label>ব্লারের পরিমাণ <b id="blurAmt-v">20</b></label><input type="range" id="blurAmt" min="2" max="80" value="20"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><i>5</i> শ্যাডো</h3>
+      <div class="row"><input type="checkbox" id="shOn"><label for="shOn" style="color:var(--txt)">ড্রপ শ্যাডো চালু</label></div>
+      <div class="rng"><label>গাঢ়তা <b id="shOp-v">40</b></label><input type="range" id="shOp" min="0" max="100" value="40"></div>
+      <div class="rng"><label>ব্লার <b id="shBl-v">20</b></label><input type="range" id="shBl" min="0" max="60" value="20"></div>
+      <div class="rng"><label>নিচে সরান <b id="shY-v">12</b></label><input type="range" id="shY" min="0" max="60" value="12"></div>
+    </div>
+
+    <div class="card">
+      <h3><i>6</i> এক্সপোর্ট</h3>
+      <div class="row"><label>ফরম্যাট</label>
+        <select id="fmt" style="width:130px"><option value="png">PNG (স্বচ্ছ)</option><option value="webp">WebP</option><option value="jpg">JPG</option></select></div>
+      <div class="rng"><label>কোয়ালিটি (JPG/WebP) <b id="q-v">95</b></label><input type="range" id="q" min="50" max="100" value="95"></div>
+      <div class="row"><input type="checkbox" id="trim"><label for="trim" style="color:var(--txt)">সাবজেক্ট অনুযায়ী ক্রপ (স্বচ্ছ ব্যাকগ্রাউন্ডে)</label></div>
+      <div class="seg">
+        <button class="btn" id="dl2" disabled>⬇ ডাউনলোড</button>
+        <button class="btn" id="copy" disabled>📋 কপি</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div id="brushCur"></div>
+<div id="busy"><div class="sp"></div><div id="busyMsg">প্রসেস হচ্ছে…</div><div id="pbar"><div></div></div></div>
+<div id="toast"></div>
+
+<script>
+/* ============================ হেল্পার ============================ */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const tick = () => new Promise(r => setTimeout(r, 30));
+let toastT;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3200);}
+function busy(on,msg,pct){
+  $('#busy').style.display=on?'flex':'none';
+  if(msg)$('#busyMsg').textContent=msg;
+  const pb=$('#pbar');
+  if(pct==null){pb.style.display='none'}else{pb.style.display='block';pb.firstElementChild.style.width=pct+'%'}
+}
+
+/* ============================ স্টেট ============================ */
+let W=0,H=0;
+let origCanvas,origData,subjCanvas,subjCtx,subjData;
+let base,aiBase=null,proc,fg=null,fgReady=false;
+let imgLoaded=false,aiDone=false,AI=null,bgImg=null;
+let undoS=[],redoS=[];
+let tool='erase',bgMode='transparent',scale=1,showOrig=false;
+const P={shift:0,smooth:0,feather:0,defringe:0.7};
+const view=$('#view'),vctx=view.getContext('2d');
+
+/* ============================ ফিল্টার কোর ============================ */
+// একক বক্স-ব্লার পাস (H+V), edge-clamp
+function box(src,w,h,r){
+  const tmp=new Float32Array(w*h),out=new Float32Array(w*h),d=2*r+1;
+  for(let y=0;y<h;y++){
+    const o=y*w;let s=0;
+    for(let i=-r;i<=r;i++)s+=src[o+Math.min(w-1,Math.max(0,i))];
+    for(let x=0;x<w;x++){
+      tmp[o+x]=s/d;
+      s+=src[o+Math.min(w-1,x+r+1)]-src[o+Math.max(0,x-r)];
+    }
+  }
+  for(let x=0;x<w;x++){
+    let s=0;
+    for(let i=-r;i<=r;i++)s+=tmp[Math.min(h-1,Math.max(0,i))*w+x];
+    for(let y=0;y<h;y++){
+      out[y*w+x]=s/d;
+      s+=tmp[Math.min(h-1,y+r+1)*w+x]-tmp[Math.max(0,y-r)*w+x];
+    }
+  }
+  return out;
+}
+function blur(src,w,h,r){ if(r<=0)return src; return box(box(src,w,h,r),w,h,r); } // ≈ গাউসিয়ান
+function curve(a,thr,k){ for(let i=0;i<a.length;i++){const v=(a[i]-thr)*k+128;a[i]=v<0?0:v>255?255:v;} }
+
+function pipeline(a,w,h){
+  let c=a;
+  if(P.shift){ c=blur(c,w,h,Math.abs(P.shift)); curve(c,P.shift>0?50:205,8); }
+  if(P.smooth){ c=blur(c,w,h,P.smooth); curve(c,128,4); }
+  if(P.feather){ c=blur(c,w,h,P.feather); }
+  return c;
+}
+
+function down(src,w,h,s,w2,h2){
+  const o=new Float32Array(w2*h2);
+  for(let y=0;y<h2;y++)for(let x=0;x<w2;x++){
+    let sum=0,n=0;
+    const ye=Math.min(h,(y+1)*s),xe=Math.min(w,(x+1)*s);
+    for(let yy=y*s;yy<ye;yy++)for(let xx=x*s;xx<xe;xx++){sum+=src[yy*w+xx];n++;}
+    o[y*w2+x]=sum/n;
+  }
+  return o;
+}
+
+// ফাস্ট গাইডেড ফিল্টার: আলফাকে আসল ছবির (luma) কিনারায় স্ন্যাপ করে
+function guided(alpha,rad,level){
+  const s=Math.max(1,Math.round(Math.max(W,H)/900));
+  const w2=Math.ceil(W/s),h2=Math.ceil(H/s),n=W*H;
+  const I=new Float32Array(n),p=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const j=i*4;
+    I[i]=(0.299*origData[j]+0.587*origData[j+1]+0.114*origData[j+2])/255;
+    p[i]=alpha[i]/255;
+  }
+  const I2=down(I,W,H,s,w2,h2),p2=down(p,W,H,s,w2,h2),m2=w2*h2;
+  const Ip=new Float32Array(m2),II=new Float32Array(m2);
+  for(let i=0;i<m2;i++){Ip[i]=I2[i]*p2[i];II[i]=I2[i]*I2[i];}
+  const r=Math.max(1,Math.round(rad/s)),eps=Math.pow(10,-2-level*0.5);
+  const mI=box(I2,w2,h2,r),mp=box(p2,w2,h2,r),mIp=box(Ip,w2,h2,r),mII=box(II,w2,h2,r);
+  const a=new Float32Array(m2),b=new Float32Array(m2);
+  for(let i=0;i<m2;i++){
+    const v=mII[i]-mI[i]*mI[i],c=mIp[i]-mI[i]*mp[i];
+    a[i]=c/(v+eps);b[i]=mp[i]-a[i]*mI[i];
+  }
+  const ma=box(a,w2,h2,r),mb=box(b,w2,h2,r);
+  // বাইলিনিয়ার আপস্যাম্পল + q = a*I + b
+  const out=new Uint8ClampedArray(n);
+  const x0=new Int32Array(W),x1=new Int32Array(W),fx=new Float32Array(W);
+  for(let x=0;x<W;x++){
+    let f=(x+0.5)/s-0.5;f=Math.max(0,Math.min(w2-1,f));
+    const i0=Math.floor(f);x0[x]=i0;x1[x]=Math.min(w2-1,i0+1);fx[x]=f-i0;
+  }
+  for(let y=0;y<H;y++){
+    let f=(y+0.5)/s-0.5;f=Math.max(0,Math.min(h2-1,f));
+    const y0=Math.floor(f),y1=Math.min(h2-1,y0+1),ty=f-y0;
+    for(let x=0;x<W;x++){
+      const tx=fx[x],i00=y0*w2+x0[x],i01=y0*w2+x1[x],i10=y1*w2+x0[x],i11=y1*w2+x1[x];
+      const A=(ma[i00]*(1-tx)+ma[i01]*tx)*(1-ty)+(ma[i10]*(1-tx)+ma[i11]*tx)*ty;
+      const B=(mb[i00]*(1-tx)+mb[i01]*tx)*(1-ty)+(mb[i10]*(1-tx)+mb[i11]*tx)*ty;
+      const i=y*W+x;
+      let q=A*I[i]+B;q=q<0?0:q>1?1:q;
+      out[i]=q*255;
+    }
+  }
+  return out;
+}
+
+// ডিফ্রিঞ্জের জন্য: নিশ্চিত সাবজেক্ট পিক্সেল থেকে রঙ ছড়িয়ে কিনারার "সঠিক" রঙ অনুমান
+function computeFg(){
+  const n=W*H,R=Math.max(3,Math.round(Math.max(W,H)/250));
+  const w=new Float32Array(n);
+  for(let i=0;i<n;i++)w[i]=base[i]>=235?1:0;
+  const bw=blur(w,W,H,R);
+  fg=new Uint8ClampedArray(4*n);
+  const t=new Float32Array(n);
+  for(let c=0;c<3;c++){
+    for(let i=0;i<n;i++)t[i]=origData[4*i+c]*w[i];
+    const bt=blur(t,W,H,R);
+    for(let i=0;i<n;i++)fg[4*i+c]=bw[i]>0.01?bt[i]/bw[i]:origData[4*i+c];
+  }
+  fgReady=true;
+}
+
+/* ============================ মাস্ক → সাবজেক্ট ইমেজ ============================ */
+function updateRegion(x0,y0,x1,y1){
+  x0=Math.max(0,x0|0);y0=Math.max(0,y0|0);x1=Math.min(W,Math.ceil(x1));y1=Math.min(H,Math.ceil(y1));
+  if(x1<=x0||y1<=y0)return;
+  const need=P.shift||P.smooth||P.feather;
+  const m=need?2*(Math.abs(P.shift)+P.smooth+P.feather)+3:0;
+  const px0=Math.max(0,x0-m),py0=Math.max(0,y0-m),px1=Math.min(W,x1+m),py1=Math.min(H,y1+m);
+  const w=px1-px0,h=py1-py0;
+  const src=new Float32Array(w*h);
+  for(let y=0;y<h;y++){const bo=(py0+y)*W+px0,o=y*w;for(let x=0;x<w;x++)src[o+x]=base[bo+x];}
+  const out=need?pipeline(src,w,h):src;
+  const d=subjData.data,def=fgReady?P.defringe:0;
+  for(let y=y0;y<y1;y++){
+    for(let x=x0;x<x1;x++){
+      const i=y*W+x,j=i*4;
+      let a=out[(y-py0)*w+(x-px0)];a=a<0?0:a>255?255:a;
+      proc[i]=a;
+      if(def>0&&a<255){
+        const t=def*Math.min(1,(255-a)/100);
+        d[j]=origData[j]+(fg[j]-origData[j])*t;
+        d[j+1]=origData[j+1]+(fg[j+1]-origData[j+1])*t;
+        d[j+2]=origData[j+2]+(fg[j+2]-origData[j+2])*t;
+      }else{d[j]=origData[j];d[j+1]=origData[j+1];d[j+2]=origData[j+2];}
+      d[j+3]=a;
+    }
+  }
+  subjCtx.putImageData(subjData,0,0,x0,y0,x1-x0,y1-y0);
+}
+function recomputeAll(){ updateRegion(0,0,W,H); }
+
+/* ============================ রেন্ডার ============================ */
+let blurCache={key:'',c:null};
+function ensureBlur(){
+  const amt=+$('#blurAmt').value;
+  if(blurCache.key===amt+'|'+W+'|'+H)return blurCache.c;
+  const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  const k=amt*W/1000;
+  if(typeof g.filter==='string'){
+    const pad=Math.ceil(k*3);
+    g.filter='blur('+k+'px)';
+    g.drawImage(origCanvas,-pad,-pad,W+pad*2,H+pad*2);
+    g.filter='none';
+  }else{
+    // ফলব্যাক: ডাউনস্কেল → আপস্কেল
+    let cur=origCanvas,f=Math.max(2,k);
+    const sm=document.createElement('canvas');sm.width=Math.max(2,Math.round(W/f));sm.height=Math.max(2,Math.round(H/f));
+    const sg=sm.getContext('2d');sg.imageSmoothingQuality='high';sg.drawImage(cur,0,0,sm.width,sm.height);
+    g.imageSmoothingQuality='high';g.drawImage(sm,0,0,W,H);
+  }
+  blurCache={key:amt+'|'+W+'|'+H,c};
+  return c;
+}
+function drawBg(g){
+  if(bgMode==='color'){g.fillStyle=$('#bgColor').value;g.fillRect(0,0,W,H);}
+  else if(bgMode==='gradient'){
+    const a=(+$('#gAngle').value)*Math.PI/180,cx=W/2,cy=H/2;
+    const L=Math.abs(W*Math.cos(a))/2+Math.abs(H*Math.sin(a))/2,dx=Math.cos(a)*L,dy=Math.sin(a)*L;
+    const gr=g.createLinearGradient(cx-dx,cy-dy,cx+dx,cy+dy);
+    gr.addColorStop(0,$('#g1').value);gr.addColorStop(1,$('#g2').value);
+    g.fillStyle=gr;g.fillRect(0,0,W,H);
+  }else if(bgMode==='image'&&bgImg){
+    const s=Math.max(W/bgImg.width,H/bgImg.height),w=bgImg.width*s,h=bgImg.height*s;
+    g.drawImage(bgImg,(W-w)/2,(H-h)/2,w,h);
+  }else if(bgMode==='blur'){g.drawImage(ensureBlur(),0,0);}
+}
+function paint(g,forceOrig){
+  g.clearRect(0,0,W,H);
+  if(forceOrig){g.drawImage(origCanvas,0,0);return;}
+  drawBg(g);
+  g.save();
+  if($('#shOn').checked){
+    const k=W/1000;
+    g.shadowColor='rgba(0,0,0,'+($('#shOp').value/100)+')';
+    g.shadowBlur=$('#shBl').value*k;
+    g.shadowOffsetY=$('#shY').value*k;
+  }
+  g.drawImage(subjCanvas,0,0);
+  g.restore();
+}
+let rafR=0;
+function render(){ if(rafR)return; rafR=requestAnimationFrame(()=>{rafR=0;if(imgLoaded)paint(vctx,showOrig);}); }
+
+/* ============================ ইমেজ লোড ============================ */
+async function loadFile(f){
+  if(!f||!f.type.startsWith('image/'))return toast('দয়া করে একটি ছবি ফাইল দিন');
+  busy(true,'ছবি লোড হচ্ছে…');await tick();
+  try{
+    const bmp=await createImageBitmap(f,{imageOrientation:'from-image'});
+    const mx=+$('#maxSize').value,sc=Math.min(1,mx/Math.max(bmp.width,bmp.height));
+    W=Math.max(1,Math.round(bmp.width*sc));H=Math.max(1,Math.round(bmp.height*sc));
+    origCanvas=document.createElement('canvas');origCanvas.width=W;origCanvas.height=H;
+    const og=origCanvas.getContext('2d',{willReadFrequently:true});
+    og.imageSmoothingQuality='high';og.drawImage(bmp,0,0,W,H);
+    origData=og.getImageData(0,0,W,H).data;
+    subjCanvas=document.createElement('canvas');subjCanvas.width=W;subjCanvas.height=H;
+    subjCtx=subjCanvas.getContext('2d');
+    subjData=new ImageData(new Uint8ClampedArray(origData),W,H);
+    base=new Uint8ClampedArray(W*H).fill(255);proc=base.slice();
+    aiBase=null;aiDone=false;fg=null;fgReady=false;undoS=[];redoS=[];blurCache.key='';
+    view.width=W;view.height=H;
+    imgLoaded=true;$('#drop').classList.add('hide');
+    setEnabled(true);syncUndoBtns();
+    recomputeAll();render();fitView();
+    busy(false);
+    if($('#autoRun').checked)await runAI();
+  }catch(e){console.error(e);busy(false);toast('ছবি লোড করা যায়নি: '+e.message);}
+}
+function setEnabled(on){
+  ['runAI','resetMask','applyRefine','cmp','dl','dl2','copy'].forEach(id=>$('#'+id).disabled=!on);
+}
+
+/* ============================ AI ============================ */
+const AI_VER='1.5.5';
+const AI_LIBS=[
+  'https://cdn.jsdelivr.net/npm/@imgly/background-removal@'+AI_VER+'/+esm',
+  'https://esm.sh/@imgly/background-removal@'+AI_VER
+];
+const AI_PATHS=[
+  '', // লাইব্রেরির ডিফল্ট (staticimgly.com)
+  'https://unpkg.com/@imgly/background-removal-data@'+AI_VER+'/dist/',
+  'https://cdn.jsdelivr.net/npm/@imgly/background-removal-data@'+AI_VER+'/dist/'
+];
+const aiCache={};
+async function loadAI(idx){
+  if(aiCache[idx])return aiCache[idx];
+  const m=await import(AI_LIBS[idx]);
+  const fn=m.removeBackground||(m.default&&m.default.removeBackground)||m.default;
+  if(typeof fn!=='function')throw new Error('removeBackground পাওয়া যায়নি');
+  return aiCache[idx]=fn;
+}
+// একাধিক লাইব্রেরি-সোর্স × মডেল-পাথ পরপর চেষ্টা করে প্রথম সফলটি ব্যবহার করে
+async function removeWithFallback(blob){
+  const custom=$('#customPath').value.trim();
+  const paths=custom?[custom.endsWith('/')?custom:custom+'/']:AI_PATHS;
+  const errs=[];
+  for(let li=0;li<AI_LIBS.length;li++){
+    let fn;
+    try{fn=await loadAI(li);}catch(e){errs.push('lib#'+(li+1)+': '+e.message);console.warn(e);continue;}
+    for(let pi=0;pi<paths.length;pi++){
+      try{
+        busy(true,'AI মডেল লোড হচ্ছে… (চেষ্টা lib '+(li+1)+'/path '+(pi+1)+')',0);
+        const cfg={
+          model:$('#model').value,
+          output:{format:'image/png',quality:1},
+          progress:(key,cur,tot)=>{
+            const pct=tot?Math.round(cur/tot*100):0;
+            busy(true,String(key).includes('fetch')?'মডেল ডাউনলোড হচ্ছে… '+pct+'%':'ছবি বিশ্লেষণ হচ্ছে…',pct);
+          }
+        };
+        if(paths[pi])cfg.publicPath=paths[pi];
+        return await fn(blob,cfg);
+      }catch(e){
+        console.warn('AI চেষ্টা ব্যর্থ',AI_LIBS[li],paths[pi]||'(default)',e);
+        errs.push((paths[pi]||'default')+' → '+(e&&e.message?e.message:e));
+      }
+    }
+  }
+  const err=new Error('সব সোর্সে ব্যর্থ। সম্ভবত আপনার নেটওয়ার্ক/ISP jsDelivr, unpkg বা staticimgly ব্লক করছে — VPN বা অন্য নেটওয়ার্কে চেষ্টা করুন।');
+  err.details=errs;throw err;
+}
+// ফলব্যাক ইঞ্জিন: Transformers.js + RMBG-1.4 (মডেল Hugging Face থেকে আসে; লাইসেন্স: নন-কমার্শিয়াল)
+let rmbg=null;
+async function runRMBG(blob){
+  busy(true,'ফলব্যাক AI (RMBG-1.4) লোড হচ্ছে… প্রথমবার ~৪৫MB',null);
+  if(!rmbg){
+    const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
+    T.env.allowLocalModels=false;
+    const cb=p=>{if(p&&p.status==='progress'&&isFinite(p.progress))busy(true,'মডেল ডাউনলোড হচ্ছে… '+Math.round(p.progress)+'%',Math.round(p.progress));};
+    const model=await T.AutoModel.from_pretrained('briaai/RMBG-1.4',{config:{model_type:'custom'},dtype:'q8',progress_callback:cb});
+    const processor=await T.AutoProcessor.from_pretrained('briaai/RMBG-1.4',{config:{
+      do_normalize:true,do_pad:false,do_rescale:true,do_resize:true,
+      image_mean:[0.5,0.5,0.5],feature_extractor_type:'ImageFeatureExtractor',
+      image_std:[1,1,1],resample:2,rescale_factor:0.00392156862745098,size:{width:1024,height:1024}
+    }});
+    rmbg={T,model,processor};
+  }
+  const {T,model,processor}=rmbg;
+  busy(true,'ছবি বিশ্লেষণ হচ্ছে…',null);await tick();
+  const image=await T.RawImage.fromBlob(blob);
+  const {pixel_values}=await processor(image);
+  const {output}=await model({input:pixel_values});
+  const mask=await T.RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width,image.height);
+  const a=new Uint8ClampedArray(W*H);
+  if(mask.data.length===W*H)a.set(mask.data);
+  else throw new Error('মাস্কের সাইজ মেলেনি');
+  return a;
+}
+function showErr(list){
+  const d=$('#errDet');d.classList.remove('hide');d.open=true;
+  $('#errPre').textContent=list.join('\n');
+}
+async function runAI(){
+  if(!imgLoaded)return toast('আগে ছবি খুলুন');
+  busy(true,'AI মডেল লোড হচ্ছে… (প্রথমবার একটু সময় লাগবে)',0);await tick();
+  try{
+    const blob=await new Promise(r=>origCanvas.toBlob(r,'image/png'));
+    let alphaArr=null;const errs=[];
+    try{
+      const out=await removeWithFallback(blob);
+      busy(true,'মাস্ক তৈরি হচ্ছে…',null);await tick();
+      const bmp=await createImageBitmap(out);
+      const c=document.createElement('canvas');c.width=W;c.height=H;
+      const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(bmp,0,0,W,H);
+      const d=g.getImageData(0,0,W,H).data;
+      alphaArr=new Uint8ClampedArray(W*H);
+      for(let i=0;i<W*H;i++)alphaArr[i]=d[4*i+3];
+    }catch(e1){
+      console.warn('imgly ইঞ্জিন ব্যর্থ, RMBG ফলব্যাক চালু হচ্ছে',e1);
+      (e1.details||[String(e1.message||e1)]).forEach(x=>errs.push('[imgly] '+x));
+      try{
+        alphaArr=await runRMBG(blob);
+      }catch(e2){
+        console.error('RMBG ব্যর্থ',e2);
+        errs.push('[RMBG] '+(e2&&e2.message?e2.message:e2));
+        showErr(errs);
+        throw new Error('দুটো AI ইঞ্জিনই চলেনি। নিচে এরর ডিটেইল দেখুন');
+      }
+    }
+    pushUndo();
+    base.set(alphaArr);
+    aiDone=true;
+    if($('#autoRefine').checked){
+      busy(true,'এজ রিফাইন হচ্ছে…',null);await tick();
+      base.set(guided(base,+$('#gRad').value,+$('#gLvl').value));
+    }
+    aiBase=base.slice();
+    fgReady=false;
+    if(P.defringe>0){busy(true,'কিনারার রঙ পরিষ্কার হচ্ছে…',null);await tick();computeFg();}
+    recomputeAll();render();busy(false);toast('✅ ব্যাকগ্রাউন্ড মুছে গেছে — এখন ব্রাশ/স্লাইডার দিয়ে ফাইন-টিউন করুন');
+  }catch(e){
+    console.error(e);busy(false);
+    toast('❌ AI চালানো যায়নি: '+e.message+' — ম্যানুয়াল টুল ব্যবহার করুন');
+  }
+}
+
+/* ============================ আনডু/রিডু ============================ */
+function pushUndo(){undoS.push(base.slice());if(undoS.length>12)undoS.shift();redoS=[];syncUndoBtns();}
+function doUndo(){if(!undoS.length)return;redoS.push(base.slice());base.set(undoS.pop());recomputeAll();render();syncUndoBtns();}
+function doRedo(){if(!redoS.length)return;undoS.push(base.slice());base.set(redoS.pop());recomputeAll();render();syncUndoBtns();}
+function syncUndoBtns(){$('#undo').disabled=!undoS.length;$('#redo').disabled=!redoS.length;}
+
+/* ============================ ব্রাশ ============================ */
+let drawing=false,last=null,dirty=null,panning=null,spaceDown=false;
+function pos(e){
+  const r=view.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height,k:W/r.width};
+}
+function stamp(x,y,rad){
+  const hard=+$('#bHard').value/100,inner=rad*hard;
+  const x0=Math.max(0,Math.floor(x-rad)),x1=Math.min(W,Math.ceil(x+rad)+1);
+  const y0=Math.max(0,Math.floor(y-rad)),y1=Math.min(H,Math.ceil(y+rad)+1);
+  const erase=tool==='erase';
+  for(let yy=y0;yy<y1;yy++)for(let xx=x0;xx<x1;xx++){
+    const dist=Math.hypot(xx-x,yy-y);
+    if(dist>rad)continue;
+    const t=dist<=inner?1:1-(dist-inner)/(rad-inner+1e-6);
+    const i=yy*W+xx;
+    base[i]=erase?base[i]*(1-t):base[i]+(255-base[i])*t;
+  }
+  if(!dirty)dirty=[x0,y0,x1,y1];
+  else{dirty[0]=Math.min(dirty[0],x0);dirty[1]=Math.min(dirty[1],y0);dirty[2]=Math.max(dirty[2],x1);dirty[3]=Math.max(dirty[3],y1);}
+}
+function strokeTo(p){
+  const rad=(+$('#bSize').value/2)*p.k;
+  const step=Math.max(1,rad/4);
+  const dx=p.x-last.x,dy=p.y-last.y,dist=Math.hypot(dx,dy),n=Math.max(1,Math.ceil(dist/step));
+  for(let i=1;i<=n;i++)stamp(last.x+dx*i/n,last.y+dy*i/n,rad);
+  last=p;
+  if(dirty){updateRegion(dirty[0],dirty[1],dirty[2],dirty[3]);dirty=null;render();}
+}
+function wand(p,erase){
+  const sx=Math.floor(p.x),sy=Math.floor(p.y);
+  if(sx<0||sy<0||sx>=W||sy>=H)return;
+  busy(true,'প্রসেস হচ্ছে…');
+  setTimeout(()=>{
+    pushUndo();
+    const si=(sy*W+sx)*4,sr=origData[si],sg=origData[si+1],sb=origData[si+2];
+    const thr=(+$('#tol').value)*4.41,thr2=thr*thr;
+    const match=i=>{const j=i*4,a=origData[j]-sr,b=origData[j+1]-sg,c=origData[j+2]-sb;return a*a+b*b+c*c<=thr2;};
+    const val=erase?0:255;
+    if($('#contig').checked){
+      const vis=new Uint8Array(W*H),stack=new Int32Array(W*H);let sp=0;
+      stack[sp++]=sy*W+sx;vis[sy*W+sx]=1;
+      while(sp){
+        const i=stack[--sp];base[i]=val;
+        const x=i%W,y=(i-x)/W;
+        if(x>0&&!vis[i-1]&&match(i-1)){vis[i-1]=1;stack[sp++]=i-1;}
+        if(x<W-1&&!vis[i+1]&&match(i+1)){vis[i+1]=1;stack[sp++]=i+1;}
+        if(y>0&&!vis[i-W]&&match(i-W)){vis[i-W]=1;stack[sp++]=i-W;}
+        if(y<H-1&&!vis[i+W]&&match(i+W)){vis[i+W]=1;stack[sp++]=i+W;}
+      }
+    }else{
+      for(let i=0;i<W*H;i++)if(match(i))base[i]=val;
+    }
+    recomputeAll();render();busy(false);
+  },30);
+}
+
+view.addEventListener('pointerdown',e=>{
+  if(!imgLoaded)return;
+  const st=$('#stage');
+  if(e.button===1||spaceDown){panning={x:e.clientX,y:e.clientY,sl:st.scrollLeft,st:st.scrollTop};view.setPointerCapture(e.pointerId);e.preventDefault();return;}
+  if(e.button!==0)return;
+  const p=pos(e);
+  if(tool==='wandE'||tool==='wandR'){wand(p,tool==='wandE');return;}
+  pushUndo();drawing=true;last=p;view.setPointerCapture(e.pointerId);
+  stamp(p.x,p.y,(+$('#bSize').value/2)*p.k);
+  updateRegion(dirty[0],dirty[1],dirty[2],dirty[3]);dirty=null;render();
+});
+view.addEventListener('pointermove',e=>{
+  moveCursor(e);
+  if(panning){const st=$('#stage');st.scrollLeft=panning.sl-(e.clientX-panning.x);st.scrollTop=panning.st-(e.clientY-panning.y);return;}
+  if(drawing)strokeTo(pos(e));
+});
+const endStroke=()=>{drawing=false;panning=null;};
+view.addEventListener('pointerup',endStroke);
+view.addEventListener('pointercancel',endStroke);
+view.addEventListener('pointerleave',()=>{$('#brushCur').style.display='none';});
+view.addEventListener('pointerenter',e=>moveCursor(e));
+function moveCursor(e){
+  const c=$('#brushCur');
+  if(!imgLoaded||tool.startsWith('wand')||spaceDown){c.style.display='none';view.style.cursor=spaceDown?'grab':'crosshair';return;}
+  const s=+$('#bSize').value;
+  c.style.display='block';c.style.width=c.style.height=s+'px';
+  c.style.left=e.clientX+'px';c.style.top=e.clientY+'px';
+  c.style.borderColor=tool==='erase'?'#ff7b7b':'#7bffb0';
+  view.style.cursor='none';
+}
+
+/* ============================ জুম ============================ */
+function applyScale(){
+  view.style.width=Math.round(W*scale)+'px';
+  view.style.height=Math.round(H*scale)+'px';
+  $('#zl').textContent=Math.round(scale*100)+'%';
+}
+function fitView(){
+  const st=$('#stage').getBoundingClientRect();
+  scale=Math.min((st.width-40)/W,(st.height-90)/H,2);
+  if(scale<=0||!isFinite(scale))scale=1;
+  applyScale();
+}
+function setZoom(f){scale=Math.max(0.05,Math.min(8,scale*f));applyScale();}
+(function(){
+  const z=document.createElement('div');z.id='zoombar';
+  z.innerHTML='<button class="btn sm" id="zo">−</button><span id="zl" style="min-width:48px;text-align:center">100%</span><button class="btn sm" id="zi">+</button><button class="btn sm" id="zf">ফিট</button><button class="btn sm" id="z1">১:১</button>';
+  $('#stageBox').appendChild(z);
+  $('#zo').onclick=()=>setZoom(1/1.25);$('#zi').onclick=()=>setZoom(1.25);
+  $('#zf').onclick=fitView;$('#z1').onclick=()=>{scale=1;applyScale();};
+})();
+$('#stage').addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(e.deltaY<0?1.1:1/1.1);}},{passive:false});
+window.addEventListener('resize',()=>{if(imgLoaded)fitView();});
+
+/* ============================ UI বাইন্ডিং ============================ */
+function bindRange(id,cb){
+  const el=$('#'+id),out=$('#'+id+'-v');
+  const f=()=>{if(out)out.textContent=el.value;cb&&cb(+el.value);};
+  el.addEventListener('input',f);f();
+}
+let sched=0;
+function schedule(){
+  if(sched)return;
+  sched=setTimeout(async()=>{
+    sched=0;if(!imgLoaded)return;
+    if(P.defringe>0&&!fgReady&&aiDone){busy(true,'কিনারার রঙ পরিষ্কার হচ্ছে…');await tick();computeFg();busy(false);}
+    recomputeAll();render();
+  },60);
+}
+bindRange('bSize');bindRange('bHard');bindRange('tol');bindRange('gRad');bindRange('gLvl');
+bindRange('shift',v=>{P.shift=v;schedule();});
+bindRange('smooth',v=>{P.smooth=v;schedule();});
+bindRange('feather',v=>{P.feather=v;schedule();});
+bindRange('defr',v=>{P.defringe=v/100;schedule();});
+bindRange('gAngle',render);bindRange('blurAmt',render);
+bindRange('shOp',render);bindRange('shBl',render);bindRange('shY',render);bindRange('q');
+['bgColor','g1','g2'].forEach(id=>$('#'+id).addEventListener('input',render));
+$('#shOn').addEventListener('change',render);
+
+$$('#tools button').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+function setTool(t){
+  tool=t;$$('#tools button').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
+  $('#brushCur').style.display='none';
+}
+$$('#bgs button').forEach(b=>b.onclick=()=>{
+  bgMode=b.dataset.bg;
+  $$('#bgs button').forEach(x=>x.classList.toggle('on',x===b));
+  ['color','gradient','image','blur'].forEach(k=>$('#bg-'+k).classList.toggle('hide',k!==bgMode));
+  if(imgLoaded)render();
+});
+['#ffffff','#000000','#f3f4f6','#ef4444','#f97316','#facc15','#22c55e','#3b82f6','#a855f7','#ec4899'].forEach(c=>{
+  const i=document.createElement('i');i.style.background=c;
+  i.onclick=()=>{$('#bgColor').value=c;render();};
+  $('#swatches').appendChild(i);
+});
+$('#pickBg').onclick=()=>$('#bgFile').click();
+$('#bgFile').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  bgImg=await createImageBitmap(f,{imageOrientation:'from-image'});render();
+};
+
+$('#open').onclick=()=>$('#file').click();
+$('#drop').onclick=()=>$('#file').click();
+$('#file').onchange=e=>{const f=e.target.files[0];if(f)loadFile(f);e.target.value='';};
+$('#runAI').onclick=runAI;
+$('#undo').onclick=doUndo;$('#redo').onclick=doRedo;
+$('#resetMask').onclick=()=>{
+  if(!imgLoaded)return;pushUndo();
+  if(aiBase)base.set(aiBase);else base.fill(255);
+  recomputeAll();render();
+};
+$('#applyRefine').onclick=async()=>{
+  if(!imgLoaded)return;
+  busy(true,'আসল ছবির কিনারায় এজ স্ন্যাপ হচ্ছে…');await tick();
+  pushUndo();
+  base.set(guided(base,+$('#gRad').value,+$('#gLvl').value));
+  fgReady=false;
+  if(P.defringe>0&&aiDone)computeFg();
+  recomputeAll();render();busy(false);
+};
+const cmp=$('#cmp');
+['pointerdown'].forEach(ev=>cmp.addEventListener(ev,()=>{showOrig=true;render();}));
+['pointerup','pointerleave','pointercancel'].forEach(ev=>cmp.addEventListener(ev,()=>{if(showOrig){showOrig=false;render();}}));
+
+/* ড্র্যাগ-ড্রপ + পেস্ট */
+const stage=$('#stage');
+['dragenter','dragover'].forEach(ev=>stage.addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>stage.addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.remove('over');}));
+stage.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)loadFile(f);});
+window.addEventListener('paste',e=>{
+  for(const it of e.clipboardData.items)if(it.type.startsWith('image/')){loadFile(it.getAsFile());break;}
+});
+
+/* কীবোর্ড */
+window.addEventListener('keydown',e=>{
+  if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)&&e.target.type!=='range')return;
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?doRedo():doUndo();return;}
+  if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();doRedo();return;}
+  if(e.code==='Space'){spaceDown=true;if(e.target===document.body)e.preventDefault();return;}
+  if(k==='e')setTool('erase');else if(k==='r')setTool('restore');
+  else if(k==='w')setTool('wandE');else if(k==='q')setTool('wandR');
+  else if(k==='['){$('#bSize').value=Math.max(4,+$('#bSize').value-8);$('#bSize').dispatchEvent(new Event('input'));}
+  else if(k===']'){$('#bSize').value=Math.min(300,+$('#bSize').value+8);$('#bSize').dispatchEvent(new Event('input'));}
+  else if(k==='\\'&&imgLoaded&&!showOrig){showOrig=true;render();}
+});
+window.addEventListener('keyup',e=>{
+  if(e.code==='Space')spaceDown=false;
+  if(e.key==='\\'&&showOrig){showOrig=false;render();}
+});
+
+/* ============================ এক্সপোর্ট ============================ */
+function buildOutput(){
+  const fmt=$('#fmt').value;
+  let c=document.createElement('canvas');c.width=W;c.height=H;
+  const g=c.getContext('2d');
+  if(fmt==='jpg'&&bgMode==='transparent'){g.fillStyle='#fff';g.fillRect(0,0,W,H);}
+  const tmp=document.createElement('canvas');tmp.width=W;tmp.height=H;
+  paint(tmp.getContext('2d'),false);
+  g.drawImage(tmp,0,0);
+  if($('#trim').checked&&bgMode==='transparent'){
+    let x0=W,y0=H,x1=-1,y1=-1;
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(proc[y*W+x]>6){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+    if(x1>=x0&&y1>=y0){
+      const sh=$('#shOn').checked?Math.ceil(($('#shBl').value*2+ +$('#shY').value)*W/1000):0;
+      x0=Math.max(0,x0-sh);y0=Math.max(0,y0-sh);x1=Math.min(W-1,x1+sh);y1=Math.min(H-1,y1+sh);
+      const t=document.createElement('canvas');t.width=x1-x0+1;t.height=y1-y0+1;
+      t.getContext('2d').drawImage(c,x0,y0,t.width,t.height,0,0,t.width,t.height);
+      c=t;
+    }
+  }
+  return c;
+}
+function toBlobAsync(c){
+  const fmt=$('#fmt').value,q=+$('#q').value/100;
+  const mime=fmt==='jpg'?'image/jpeg':fmt==='webp'?'image/webp':'image/png';
+  return new Promise(r=>c.toBlob(r,mime,q));
+}
+async function download(){
+  if(!imgLoaded)return;
+  busy(true,'ফাইল তৈরি হচ্ছে…');await tick();
+  const blob=await toBlobAsync(buildOutput());busy(false);
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='cutpro-'+Date.now()+'.'+$('#fmt').value;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+$('#dl').onclick=download;$('#dl2').onclick=download;
+$('#copy').onclick=async()=>{
+  if(!imgLoaded)return;
+  try{
+    const c=buildOutput();
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+    toast('✅ ক্লিপবোর্ডে কপি হয়েছে');
+  }catch(e){toast('কপি করা যায়নি — ডাউনলোড ব্যবহার করুন');}
+};
+</script>
+</body>
+</html>
